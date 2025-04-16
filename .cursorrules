@@ -1,0 +1,79 @@
+{
+    "rules": [
+        {
+            "name": "Swift View Protocol Conformance",
+            "pattern": "struct\\s+\\w+\\s*:\\s*View",
+            "description": "SwiftUI views should conform to the View protocol"
+        },
+        {
+            "name": "State Property Wrapper",
+            "pattern": "@State\\s+(private\\s+)?(var|let)\\s+\\w+",
+            "description": "Use @State for view-specific state"
+        },
+        {
+            "name": "StateObject Property Wrapper",
+            "pattern": "@StateObject\\s+(private\\s+)?(var|let)\\s+\\w+",
+            "description": "Use @StateObject for view model instances"
+        },
+        {
+            "name": "Preview Provider",
+            "pattern": "#Preview\\s*\\{",
+            "description": "SwiftUI preview providers should be included for views"
+        },
+        {
+            "name": "Public Access Control",
+            "pattern": "public\\s+(struct|class|enum|protocol|func|var|let)\\s+\\w+",
+            "description": "Public declarations should be explicitly marked"
+        },
+        {
+            "name": "Private Implementation",
+            "pattern": "private\\s+(struct|class|enum|protocol|func|var|let)\\s+\\w+",
+            "description": "Implementation details should be private"
+        },
+        {
+            "name": "View Modifier Pattern",
+            "pattern": "func\\s+\\w+\\(\\s*\\)\\s*->\\s*some\\s+View",
+            "description": "View modifiers should return some View"
+        },
+        {
+            "name": "GeometryReader Usage",
+            "pattern": "GeometryReader\\s*\\{",
+            "description": "GeometryReader should be used for layout calculations"
+        },
+        {
+            "name": "EnvironmentObject Usage",
+            "pattern": "@EnvironmentObject\\s+(var|let)\\s+\\w+",
+            "description": "Use @EnvironmentObject for shared state"
+        },
+        {
+            "name": "Binding Property Wrapper",
+            "pattern": "@Binding\\s+(var|let)\\s+\\w+",
+            "description": "Use @Binding for two-way data flow"
+        },
+        {
+            "name": "API Request Pattern",
+            "pattern": "func\\s+\\w+Request\\(.*\\)\\s*->\\s*URLRequest",
+            "description": "API request functions should return URLRequest"
+        },
+        {
+            "name": "API Response Model",
+            "pattern": "struct\\s+\\w+Response\\s*:\\s*Codable",
+            "description": "API response models should conform to Codable"
+        },
+        {
+            "name": "API Error Handling",
+            "pattern": "enum\\s+\\w+Error\\s*:\\s*Error",
+            "description": "API error types should conform to Error protocol"
+        }
+    ],
+    "ignorePatterns": [
+        ".*\\.xcodeproj/.*",
+        ".*\\.build/.*",
+        ".*\\.swiftpm/.*",
+        ".*\\.git/.*",
+        ".*\\.DS_Store"
+    ],
+    "filePatterns": [
+        "*.swift"
+    ]
+} 
