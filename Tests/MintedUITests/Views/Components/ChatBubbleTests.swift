@@ -10,10 +10,12 @@ import AppKit
 final class ChatBubbleTests: XCTestCase {
     func testUserMessageRendering() {
         let message = Message(
-            id: UUID(),
+            id: "test-id-1",
             text: "Hello, world!",
             isFromUser: true,
-            timestamp: Date()
+            conversationId: "test-conversation-1",
+            createdAt: Date(),
+            lastModified: Date()
         )
         
         let view = ChatBubble(message: message)
@@ -28,10 +30,12 @@ final class ChatBubbleTests: XCTestCase {
     
     func testAssistantMessageRendering() {
         let message = Message(
-            id: UUID(),
+            id: "test-id-2",
             text: "Hello, how can I help you?",
             isFromUser: false,
-            timestamp: Date()
+            conversationId: "test-conversation-1",
+            createdAt: Date(),
+            lastModified: Date()
         )
         
         let view = ChatBubble(message: message)
@@ -47,10 +51,12 @@ final class ChatBubbleTests: XCTestCase {
     func testMessageContent() {
         let testContent = "Test message content"
         let message = Message(
-            id: UUID(),
+            id: "test-id-3",
             text: testContent,
             isFromUser: true,
-            timestamp: Date()
+            conversationId: "test-conversation-1",
+            createdAt: Date(),
+            lastModified: Date()
         )
         
         let view = ChatBubble(message: message)

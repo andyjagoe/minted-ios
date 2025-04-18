@@ -1,27 +1,34 @@
 import Foundation
 import Combine
 import SwiftUI
+import Clerk
+
+extension Notification.Name {
+    static let conversationsUpdated = Notification.Name("conversationsUpdated")
+    static let messagesUpdated = Notification.Name("messagesUpdated")
+}
 
 /// ViewModel for managing chat state and logic
 @MainActor
 public class ChatViewModel: ObservableObject {
-    private static let conversationsKey = "savedConversations"
-    
-    /// Published array of conversations
-    @AppStorage(conversationsKey) private var storedConversations: Data = Data()
-    
     /// Published array of conversations
     @Published public private(set) var conversations: [Conversation] = [] {
         didSet {
-            // Save conversations whenever they change
-            if let encoded = try? JSONEncoder().encode(conversations) {
-                storedConversations = encoded
-            }
+            // Notify observers that conversations have been updated
+            NotificationCenter.default.post(name: .conversationsUpdated, object: nil)
         }
     }
     
     /// Currently selected conversation
-    @Published public private(set) var currentConversation: Conversation?
+    @Published public var currentConversation: Conversation?
+    
+    /// Messages for the current conversation
+    @Published public private(set) var currentMessages: [Message] = [] {
+        didSet {
+            // Notify observers that messages have been updated
+            NotificationCenter.default.post(name: .messagesUpdated, object: nil)
+        }
+    }
     
     /// Published text input from the user
     @Published public var messageText: String = ""
@@ -34,113 +41,187 @@ public class ChatViewModel: ObservableObject {
     
     /// Initialize with optional initial conversations
     public init(initialConversations: [Conversation] = []) {
-        // Load saved conversations if they exist
-        if let decoded = try? JSONDecoder().decode([Conversation].self, from: storedConversations) {
-            self.conversations = decoded
-        } else {
-            self.conversations = initialConversations
-        }
-        self.currentConversation = self.conversations.first
+        self.conversations = initialConversations
+        // Don't set currentConversation here, it will be set after loading from API
+        loadConversations()
     }
     
     deinit {
         responseTask?.cancel()
     }
     
+    /// Load conversations from the API
+    private func loadConversations() {
+        Task {
+            do {
+                // Check for active session
+                guard let session = await Clerk.shared.session else {
+                    print("No active session, skipping conversation load")
+                    return
+                }
+                
+                conversations = try await APIService.shared.getConversations()
+                // Set the first conversation as active if available
+                if !conversations.isEmpty {
+                    currentConversation = conversations[0]
+                    loadMessages(for: conversations[0])
+                }
+            } catch {
+                print("Error loading conversations: \(error)")
+            }
+        }
+    }
+    
     /// Create a new conversation
     public func createNewConversation() {
-        let newConversation = Conversation()
-        conversations.append(newConversation)
-        currentConversation = newConversation
-        shouldFocusInput = true
+        Task {
+            do {
+                // Check for active session
+                guard let session = await Clerk.shared.session else {
+                    print("No active session, cannot create conversation")
+                    return
+                }
+                
+                let newConversation = try await APIService.shared.createConversation()
+                conversations.append(newConversation)
+                currentConversation = newConversation
+                currentMessages = []
+                shouldFocusInput = true
+            } catch {
+                print("Error creating conversation: \(error)")
+            }
+        }
     }
     
     /// Switch to a different conversation
     public func switchToConversation(_ conversation: Conversation) {
         currentConversation = conversation
+        loadMessages(for: conversation)
+    }
+    
+    /// Load messages for a conversation
+    private func loadMessages(for conversation: Conversation) {
+        Task {
+            do {
+                currentMessages = try await APIService.shared.getMessages(conversationId: conversation.id)
+            } catch {
+                print("Error loading messages: \(error)")
+            }
+        }
     }
     
     /// Delete the current conversation
     public func deleteCurrentConversation() {
         guard let conversation = currentConversation else { return }
-        conversations.removeAll { $0.id == conversation.id }
-        currentConversation = conversations.first
+        
+        Task {
+            do {
+                // Store the current conversation ID before deletion
+                let currentId = conversation.id
+                
+                // Make the API call
+                try await APIService.shared.deleteConversation(id: currentId)
+                
+                // After successful API call, update local state
+                conversations.removeAll { $0.id == currentId }
+                
+                // Set the next conversation as active
+                if conversations.isEmpty {
+                    currentConversation = nil
+                    currentMessages = []
+                } else {
+                    // Always set the first conversation in the list as active
+                    currentConversation = conversations[0]
+                    loadMessages(for: conversations[0])
+                }
+            } catch {
+                print("Error deleting conversation: \(error)")
+            }
+        }
     }
     
     /// Rename the current conversation
     public func renameCurrentConversation(to newTitle: String) {
         guard let conversation = currentConversation else { return }
-        let updatedConversation = Conversation(
-            id: conversation.id,
-            messages: conversation.messages,
-            createdAt: conversation.createdAt,
-            lastModified: Date(),
-            title: newTitle
-        )
         
-        if let index = conversations.firstIndex(where: { $0.id == conversation.id }) {
-            conversations[index] = updatedConversation
-            currentConversation = updatedConversation
+        Task {
+            do {
+                let updatedConversation = try await APIService.shared.updateConversation(id: conversation.id, title: newTitle)
+                
+                // Update the conversations array
+                if let index = conversations.firstIndex(where: { $0.id == conversation.id }) {
+                    conversations[index] = updatedConversation
+                    currentConversation = updatedConversation
+                    
+                    // Notify observers that conversations have been updated
+                    NotificationCenter.default.post(name: .conversationsUpdated, object: nil)
+                }
+            } catch {
+                print("Error renaming conversation: \(error)")
+            }
         }
     }
     
     /// Send a new message in the current conversation
     public func sendMessage() {
-        guard !messageText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-              var conversation = currentConversation else { return }
+        // Trim whitespace and newlines from the message
+        let trimmedMessage = messageText.trimmingCharacters(in: .whitespacesAndNewlines)
         
-        let newMessage = Message(text: messageText, isFromUser: true)
-        var updatedMessages = conversation.messages
-        updatedMessages.append(newMessage)
+        // Ensure we have a non-empty message
+        guard !trimmedMessage.isEmpty else { return }
         
-        // Determine the new title
-        let newTitle = conversation.messages.isEmpty ? messageText : conversation.title
-        
-        // Update the conversation with the new message
-        let updatedConversation = Conversation(
-            id: conversation.id,
-            messages: updatedMessages,
-            createdAt: conversation.createdAt,
-            lastModified: Date(),
-            title: newTitle
-        )
-        
-        // Update the conversations array
-        if let index = conversations.firstIndex(where: { $0.id == conversation.id }) {
-            conversations[index] = updatedConversation
-            currentConversation = updatedConversation
-        }
-        
-        messageText = ""
-        
-        // Cancel any existing response task
-        responseTask?.cancel()
-        
-        // Create new response task
-        responseTask = Task {
+        Task {
             do {
-                try await Task.sleep(nanoseconds: 1_000_000_000) // 1 second delay
-                if !Task.isCancelled {
-                    let response = Message(text: "This is a simulated response to: \(newMessage.text)", isFromUser: false)
-                    var finalMessages = updatedMessages
-                    finalMessages.append(response)
-                    
-                    let finalConversation = Conversation(
+                // Check for active session
+                guard let session = await Clerk.shared.session else {
+                    print("No active session, cannot send message")
+                    return
+                }
+                
+                // If no active conversation, create one first
+                if currentConversation == nil {
+                    let newConversation = try await APIService.shared.createConversation()
+                    conversations.append(newConversation)
+                    currentConversation = newConversation
+                    currentMessages = []
+                }
+                
+                // Now we should have an active conversation
+                guard let conversation = currentConversation else {
+                    print("Failed to create or set active conversation")
+                    return
+                }
+                
+                // Send the message to the API
+                let newMessage = try await APIService.shared.createMessage(
+                    conversationId: conversation.id,
+                    content: trimmedMessage
+                )
+                
+                // Update the messages array
+                currentMessages.append(newMessage)
+                
+                // Update the conversation title if it's the first message
+                if currentMessages.count == 1 {
+                    let updatedConversation = Conversation(
                         id: conversation.id,
-                        messages: finalMessages,
+                        title: trimmedMessage,
                         createdAt: conversation.createdAt,
-                        lastModified: Date(),
-                        title: newTitle
+                        lastModified: Int64(Date().timeIntervalSince1970)
                     )
                     
+                    // Update the conversations array
                     if let index = conversations.firstIndex(where: { $0.id == conversation.id }) {
-                        conversations[index] = finalConversation
-                        currentConversation = finalConversation
+                        conversations[index] = updatedConversation
+                        currentConversation = updatedConversation
                     }
                 }
+                
+                // Clear the input
+                messageText = ""
+                
             } catch {
-                // Handle any potential errors during sleep
-                print("Error in response task: \(error)")
+                print("Error sending message: \(error)")
             }
         }
     }

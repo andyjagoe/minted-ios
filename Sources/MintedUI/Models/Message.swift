@@ -2,23 +2,29 @@ import Foundation
 
 /// Represents a single message in the chat
 public struct Message: Identifiable, Equatable, Codable {
-    public let id: UUID
-    public let text: String
+    public let id: String
+    public let content: String
     public let isFromUser: Bool
-    public let timestamp: Date
+    public let conversationId: String
+    public let createdAt: Int64
+    public let lastModified: Int64
     
-    public init(id: UUID = UUID(), text: String, isFromUser: Bool, timestamp: Date = Date()) {
+    public init(id: String, content: String, isFromUser: Bool, conversationId: String, createdAt: Int64, lastModified: Int64) {
         self.id = id
-        self.text = text
+        self.content = content
         self.isFromUser = isFromUser
-        self.timestamp = timestamp
+        self.conversationId = conversationId
+        self.createdAt = createdAt
+        self.lastModified = lastModified
     }
     
     public static func == (lhs: Message, rhs: Message) -> Bool {
         lhs.id == rhs.id &&
-        lhs.text == rhs.text &&
+        lhs.content == rhs.content &&
         lhs.isFromUser == rhs.isFromUser &&
-        lhs.timestamp == rhs.timestamp
+        lhs.conversationId == rhs.conversationId &&
+        lhs.createdAt == rhs.createdAt &&
+        lhs.lastModified == rhs.lastModified
     }
 }
 
@@ -26,10 +32,21 @@ public struct Message: Identifiable, Equatable, Codable {
 extension Message {
     /// Sample messages for preview and testing
     public static let sampleMessages: [Message] = [
-        Message(text: "Hello! How can I help you today?", isFromUser: false),
-        Message(text: "I'm looking for information about SwiftUI.", isFromUser: true),
-        Message(text: "SwiftUI is a modern framework for building user interfaces across all Apple platforms.", isFromUser: false),
-        Message(text: "That sounds great! Can you tell me more about its features?", isFromUser: true),
-        Message(text: "Sure! SwiftUI provides declarative syntax, live previews, and automatic updates when your data changes.", isFromUser: false)
+        Message(
+            id: "sample-1",
+            content: "Hello! How can I help you today?",
+            isFromUser: false,
+            conversationId: "sample-conversation-1",
+            createdAt: Int64(Date().timeIntervalSince1970),
+            lastModified: Int64(Date().timeIntervalSince1970)
+        ),
+        Message(
+            id: "sample-2",
+            content: "I'm looking for information about SwiftUI.",
+            isFromUser: true,
+            conversationId: "sample-conversation-1",
+            createdAt: Int64(Date().timeIntervalSince1970),
+            lastModified: Int64(Date().timeIntervalSince1970)
+        )
     ]
 } 

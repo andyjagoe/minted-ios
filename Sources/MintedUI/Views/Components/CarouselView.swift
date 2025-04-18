@@ -27,11 +27,6 @@ public struct CarouselView: View {
                             guard isButtonEnabled else { return }
                             isButtonEnabled = false
                             
-                            // Create conversation if needed
-                            if viewModel.currentConversation == nil {
-                                viewModel.createNewConversation()
-                            }
-                            
                             // Set and send message
                             viewModel.messageText = prompt
                             viewModel.sendMessage()

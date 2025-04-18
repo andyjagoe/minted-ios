@@ -20,7 +20,7 @@ public struct ChatView: View {
         ZStack {
             VStack(spacing: 0) {
                 // Carousel
-                if viewModel.currentConversation?.messages.isEmpty ?? true {
+                if viewModel.currentMessages.isEmpty {
                     CarouselView(viewModel: viewModel)
                 }
                 
@@ -28,24 +28,22 @@ public struct ChatView: View {
                 ScrollViewReader { proxy in
                     ScrollView {
                         LazyVStack(spacing: 16) {
-                            if let conversation = viewModel.currentConversation {
-                                ForEach(conversation.messages) { message in
-                                    ChatBubble(message: message)
-                                        .id(message.id)
-                                }
+                            ForEach(viewModel.currentMessages) { message in
+                                ChatBubble(message: message)
+                                    .id(message.id)
                             }
                         }
                         .padding()
                     }
-                    .onChange(of: viewModel.currentConversation?.messages) { _ in
-                        if let lastMessage = viewModel.currentConversation?.messages.last {
+                    .onChange(of: viewModel.currentMessages) { _ in
+                        if let lastMessage = viewModel.currentMessages.last {
                             withAnimation(.easeOut(duration: 0.2)) {
                                 proxy.scrollTo(lastMessage.id, anchor: .bottom)
                             }
                         }
                     }
                     .onAppear {
-                        if let lastMessage = viewModel.currentConversation?.messages.last {
+                        if let lastMessage = viewModel.currentMessages.last {
                             proxy.scrollTo(lastMessage.id, anchor: .bottom)
                         }
                         isInputFocused = true
@@ -53,7 +51,7 @@ public struct ChatView: View {
                 }
                 
                 // Suggestion bubbles
-                if viewModel.currentConversation?.messages.isEmpty ?? true {
+                if viewModel.currentMessages.isEmpty {
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 12) {
                             ForEach(Suggestion.all) { suggestion in
@@ -135,9 +133,6 @@ public struct ChatView: View {
                     }
                     
                     Button(action: {
-                        if viewModel.currentConversation == nil {
-                            viewModel.createNewConversation()
-                        }
                         viewModel.sendMessage()
                         textEditorHeight = 24 // Reset height
                         viewModel.messageText = "" // Clear the text
@@ -169,7 +164,7 @@ public struct ChatView: View {
                         ShareLink(item: "Minted Conversation") {
                             Label("Share", systemImage: "square.and.arrow.up")
                         }
-                        .disabled(viewModel.currentConversation == nil)
+                        .disabled($viewModel.currentConversation.wrappedValue == nil)
                         
                         Button(action: {
                             showRenameAlert = true

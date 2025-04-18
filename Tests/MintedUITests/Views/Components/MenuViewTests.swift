@@ -15,9 +15,9 @@ final class MenuViewTests: XCTestCase {
         UserDefaults.standard.removeObject(forKey: "savedConversations")
         
         // Create test conversations with consistent timestamps
-        let conversation1 = Conversation(id: UUID(), messages: [], createdAt: now, lastModified: now, title: "First Chat")
-        let conversation2 = Conversation(id: UUID(), messages: [], createdAt: now, lastModified: now, title: "Second Chat")
-        let conversation3 = Conversation(id: UUID(), messages: [], createdAt: now, lastModified: now, title: "Third Chat")
+        let conversation1 = Conversation(id: "test-id-1", messages: [], createdAt: now, lastModified: now, title: "First Chat")
+        let conversation2 = Conversation(id: "test-id-2", messages: [], createdAt: now, lastModified: now, title: "Second Chat")
+        let conversation3 = Conversation(id: "test-id-3", messages: [], createdAt: now, lastModified: now, title: "Third Chat")
         
         // Initialize viewModel with conversations
         viewModel = ChatViewModel(initialConversations: [conversation1, conversation2, conversation3])
@@ -32,7 +32,7 @@ final class MenuViewTests: XCTestCase {
     func testConversationsAreSortedByLastModified() {
         // Create conversations with different lastModified dates
         let oldConversation = Conversation(
-            id: UUID(),
+            id: "test-id-old",
             messages: [],
             createdAt: now,
             lastModified: now.addingTimeInterval(-3600), // 1 hour ago
@@ -40,7 +40,7 @@ final class MenuViewTests: XCTestCase {
         )
         
         let currentConversation = Conversation(
-            id: UUID(),
+            id: "test-id-current",
             messages: [],
             createdAt: now,
             lastModified: now,
@@ -48,7 +48,7 @@ final class MenuViewTests: XCTestCase {
         )
         
         let newConversation = Conversation(
-            id: UUID(),
+            id: "test-id-new",
             messages: [],
             createdAt: now,
             lastModified: now.addingTimeInterval(3600), // 1 hour from now

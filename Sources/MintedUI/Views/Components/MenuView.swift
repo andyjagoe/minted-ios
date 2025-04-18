@@ -1,5 +1,6 @@
 import SwiftUI
 import Clerk
+import MintedUI
 
 /// A side menu view that slides in from the left
 public struct MenuView: View {
@@ -9,6 +10,9 @@ public struct MenuView: View {
     @State private var isSignInShowing = false
     @ObservedObject var viewModel: ChatViewModel
     @Environment(Clerk.self) private var clerk
+    @State private var conversations: [Conversation] = []
+    @State private var isLoading = false
+    @State private var error: String?
     
     public init(isShowing: Binding<Bool>, viewModel: ChatViewModel) {
         self._isShowing = isShowing
@@ -17,9 +21,9 @@ public struct MenuView: View {
     
     internal var filteredConversations: [Conversation] {
         if searchText.isEmpty {
-            return viewModel.conversations.sorted(by: { $0.lastModified > $1.lastModified })
+            return conversations.sorted(by: { $0.lastModified > $1.lastModified })
         } else {
-            return viewModel.conversations
+            return conversations
                 .filter { $0.title.localizedCaseInsensitiveContains(searchText) }
                 .sorted(by: { $0.lastModified > $1.lastModified })
         }
@@ -107,15 +111,29 @@ public struct MenuView: View {
                         HStack(spacing: 12) {
                             if let user = clerk.user {
                                 if !user.imageUrl.isEmpty {
-                                    AsyncImage(url: URL(string: user.imageUrl)) { image in
-                                        image
-                                            .resizable()
-                                            .scaledToFill()
-                                            .frame(width: 40, height: 40)
-                                            .clipShape(Circle())
-                                    } placeholder: {
-                                        ProgressView()
-                                            .frame(width: 40, height: 40)
+                                    AsyncImage(url: URL(string: user.imageUrl)) { phase in
+                                        switch phase {
+                                        case .empty:
+                                            Image(systemName: "person.circle.fill")
+                                                .resizable()
+                                                .frame(width: 40, height: 40)
+                                                .foregroundColor(.gray)
+                                        case .success(let image):
+                                            image
+                                                .resizable()
+                                                .frame(width: 40, height: 40)
+                                                .clipShape(Circle())
+                                        case .failure:
+                                            Image(systemName: "person.circle.fill")
+                                                .resizable()
+                                                .frame(width: 40, height: 40)
+                                                .foregroundColor(.gray)
+                                        @unknown default:
+                                            Image(systemName: "person.circle.fill")
+                                                .resizable()
+                                                .frame(width: 40, height: 40)
+                                                .foregroundColor(.gray)
+                                        }
                                     }
                                 } else {
                                     Image(systemName: "person.circle.fill")
@@ -124,15 +142,9 @@ public struct MenuView: View {
                                 }
                                 
                                 VStack(alignment: .leading, spacing: 4) {
-                                    if let primaryEmail = user.emailAddresses.first(where: { $0.id == user.primaryEmailAddressId }) {
-                                        Text(primaryEmail.emailAddress)
-                                            .font(.system(size: 16, weight: .medium))
-                                            .foregroundColor(.primary)
-                                    } else {
-                                        Text("No email")
-                                            .font(.system(size: 16, weight: .medium))
-                                            .foregroundColor(.primary)
-                                    }
+                                    Text(user.primaryEmailAddress?.emailAddress ?? "No email")
+                                        .font(.system(size: 16, weight: .medium))
+                                        .foregroundColor(.primary)
                                 }
                             } else {
                                 Image(systemName: "person.circle.fill")
@@ -171,6 +183,28 @@ public struct MenuView: View {
         .sheet(isPresented: $isSettingsShowing) {
             SettingsView()
         }
+        .onAppear {
+            loadConversations()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .conversationsUpdated)) { _ in
+            loadConversations()
+        }
+    }
+    
+    private func loadConversations() {
+        guard clerk.user != nil else { return }
+        
+        isLoading = true
+        error = nil
+        
+        Task {
+            do {
+                conversations = try await APIService.shared.getConversations()
+            } catch {
+                self.error = error.localizedDescription
+            }
+            isLoading = false
+        }
     }
 }
 
@@ -181,13 +215,13 @@ private struct ConversationItem: View {
     
     var body: some View {
         HStack(spacing: 12) {
-            Text(conversation.title)
+            Text(conversation.title ?? "Untitled Conversation")
                 .font(.system(size: 14))
                 .foregroundColor(.gray)
                 .lineLimit(1)
                 .truncationMode(.middle)
                 .frame(minWidth: 100, maxWidth: .infinity, alignment: .leading)
-                .help(conversation.title)
+                .help(conversation.title ?? "Untitled Conversation")
             
             Spacer()
             
