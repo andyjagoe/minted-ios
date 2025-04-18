@@ -45,4 +45,10 @@ public enum ClerkConfig {
             throw error
         }
     }
+    
+    public static func signOut() async throws {
+        print("ClerkConfig: Attempting to sign out")
+        try await Clerk.shared.signOut()
+        print("ClerkConfig: Sign out successful")
+    }
 } 

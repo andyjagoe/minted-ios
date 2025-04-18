@@ -7,13 +7,30 @@
 
 import SwiftUI
 import MintedUI
+import Clerk
 
 @main
 struct MintedApp: App {
+    @State private var clerk = Clerk.shared
+    @State private var isConfigured = false
+    
     var body: some Scene {
         WindowGroup {
             NavigationView {
-                ChatView()
+                if !isConfigured {
+                    ProgressView("Initializing...")
+                        .task {
+                            do {
+                                try await ClerkConfig.configure()
+                                isConfigured = true
+                            } catch {
+                                print("Failed to configure Clerk: \(error)")
+                            }
+                        }
+                } else {
+                    AuthenticationView()
+                        .environment(clerk)
+                }
             }
         }
     }

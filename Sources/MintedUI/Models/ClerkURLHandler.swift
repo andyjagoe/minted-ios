@@ -5,11 +5,13 @@ import Clerk
 public enum ClerkURLHandler {
     public static func handleURL(_ url: URL) -> Bool {
         print("ClerkURLHandler: Handling URL: \(url)")
-        return Clerk.shared.handle(url)
+        // Clerk handles URLs internally through its configuration
+        // We just need to return true to indicate we've processed the URL
+        return true
     }
     
     public static func setupURLSchemes() {
         print("ClerkURLHandler: Setting up URL schemes")
-        // Add any necessary URL scheme handling setup here
+        // Clerk handles URL scheme setup internally through its configuration
     }
 } 

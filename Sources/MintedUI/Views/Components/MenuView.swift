@@ -1,4 +1,5 @@
 import SwiftUI
+import Clerk
 
 /// A side menu view that slides in from the left
 public struct MenuView: View {
@@ -7,6 +8,7 @@ public struct MenuView: View {
     @State private var isSettingsShowing = false
     @State private var isSignInShowing = false
     @ObservedObject var viewModel: ChatViewModel
+    @Environment(Clerk.self) private var clerk
     
     public init(isShowing: Binding<Bool>, viewModel: ChatViewModel) {
         self._isShowing = isShowing
@@ -103,14 +105,45 @@ public struct MenuView: View {
                             .padding(.vertical, 8)
                         
                         HStack(spacing: 12) {
-                            Image(systemName: "person.circle.fill")
-                                .font(.system(size: 40))
-                                .foregroundColor(.gray)
-                            
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text("Guest")
-                                    .font(.system(size: 16, weight: .medium))
-                                    .foregroundColor(.primary)
+                            if let user = clerk.user {
+                                if !user.imageUrl.isEmpty {
+                                    AsyncImage(url: URL(string: user.imageUrl)) { image in
+                                        image
+                                            .resizable()
+                                            .scaledToFill()
+                                            .frame(width: 40, height: 40)
+                                            .clipShape(Circle())
+                                    } placeholder: {
+                                        ProgressView()
+                                            .frame(width: 40, height: 40)
+                                    }
+                                } else {
+                                    Image(systemName: "person.circle.fill")
+                                        .font(.system(size: 40))
+                                        .foregroundColor(.gray)
+                                }
+                                
+                                VStack(alignment: .leading, spacing: 4) {
+                                    if let primaryEmail = user.emailAddresses.first(where: { $0.id == user.primaryEmailAddressId }) {
+                                        Text(primaryEmail.emailAddress)
+                                            .font(.system(size: 16, weight: .medium))
+                                            .foregroundColor(.primary)
+                                    } else {
+                                        Text("No email")
+                                            .font(.system(size: 16, weight: .medium))
+                                            .foregroundColor(.primary)
+                                    }
+                                }
+                            } else {
+                                Image(systemName: "person.circle.fill")
+                                    .font(.system(size: 40))
+                                    .foregroundColor(.gray)
+                                
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text("Guest")
+                                        .font(.system(size: 16, weight: .medium))
+                                        .foregroundColor(.primary)
+                                }
                             }
                             
                             Spacer()
@@ -175,21 +208,30 @@ private struct ConversationItem: View {
 private struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.openURL) private var openURL
-    @State private var isSignInShowing = false
+    @Environment(Clerk.self) private var clerk
+    @State private var isSigningOut = false
     
     var body: some View {
         NavigationView {
             List {
-                Section {
-                    Button(action: {
-                        isSignInShowing = true
-                    }) {
-                        HStack {
-                            Image(systemName: "person.circle")
-                                .foregroundColor(.blue)
-                            Text("Sign In")
-                                .foregroundColor(.blue)
+                if clerk.user != nil {
+                    Section {
+                        Button(role: .destructive) {
+                            Task {
+                                await signOut()
+                            }
+                        } label: {
+                            HStack {
+                                Image(systemName: "person.circle")
+                                    .foregroundColor(.red)
+                                Text("Sign Out")
+                                if isSigningOut {
+                                    Spacer()
+                                    ProgressView()
+                                }
+                            }
                         }
+                        .disabled(isSigningOut)
                     }
                 }
                 
@@ -250,37 +292,38 @@ private struct SettingsView: View {
                     .listRowBackground(Color.clear)
                 }
             }
-            .navigationTitle("Settings")
             #if os(iOS)
+            .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
-            #endif
             .toolbar {
-                #if os(iOS)
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(action: {
+                    Button("Done") {
                         dismiss()
-                    }) {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.system(size: 20))
-                            .foregroundColor(.gray)
                     }
                 }
-                #else
-                ToolbarItem(placement: .automatic) {
-                    Button(action: {
-                        dismiss()
-                    }) {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.system(size: 20))
-                            .foregroundColor(.gray)
-                    }
-                }
-                #endif
             }
+            #else
+            .navigationTitle("Settings")
+            .toolbar {
+                ToolbarItem(placement: .automatic) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                }
+            }
+            #endif
         }
-        .sheet(isPresented: $isSignInShowing) {
-            SignInView()
+    }
+    
+    private func signOut() async {
+        isSigningOut = true
+        do {
+            try await ClerkConfig.signOut()
+            dismiss()
+        } catch {
+            print("Failed to sign out: \(error)")
         }
+        isSigningOut = false
     }
 }
 
