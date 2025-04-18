@@ -12,10 +12,15 @@ let package = Package(
             name: "MintedUI",
             targets: ["MintedUI"]),
     ],
+    dependencies: [
+        .package(url: "https://github.com/clerk/clerk-ios.git", exact: "0.55.0")
+    ],
     targets: [
         .target(
             name: "MintedUI",
-            dependencies: [],
+            dependencies: [
+                .product(name: "Clerk", package: "clerk-ios")
+            ],
             path: "Sources/MintedUI",
             sources: ["Models", "ViewModels", "Views"],
             resources: [.process("Assets.xcassets")]),

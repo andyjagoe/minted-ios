@@ -5,6 +5,7 @@ public struct MenuView: View {
     @Binding var isShowing: Bool
     @State internal var searchText = ""
     @State private var isSettingsShowing = false
+    @State private var isSignInShowing = false
     @ObservedObject var viewModel: ChatViewModel
     
     public init(isShowing: Binding<Bool>, viewModel: ChatViewModel) {
@@ -97,40 +98,45 @@ public struct MenuView: View {
                     }
                     
                     // User profile section
-                    HStack(spacing: 8) {
-                        Image(systemName: "person.circle.fill")
-                            .font(.system(size: 32))
-                            .foregroundColor(.gray)
+                    VStack(alignment: .leading, spacing: 0) {
+                        Divider()
+                            .padding(.vertical, 8)
                         
-                        Text("Guest")
-                            .font(.headline)
-                        
-                        Spacer()
-                        
-                        Button(action: {
-                            isSettingsShowing = true
-                        }) {
-                            Image(systemName: "ellipsis")
-                                .font(.system(size: 20))
+                        HStack(spacing: 12) {
+                            Image(systemName: "person.circle.fill")
+                                .font(.system(size: 40))
                                 .foregroundColor(.gray)
+                            
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Guest")
+                                    .font(.system(size: 16, weight: .medium))
+                                    .foregroundColor(.primary)
+                            }
+                            
+                            Spacer()
+                            
+                            Button(action: {
+                                isSettingsShowing = true
+                            }) {
+                                Image(systemName: "ellipsis")
+                                    .font(.system(size: 20))
+                                    .foregroundColor(.gray)
+                            }
                         }
+                        .padding(.vertical, 12)
+                        .padding(.horizontal, 12)
                     }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 20)
-                    .background(Color.white)
+                    .padding(.bottom, 20)
                 }
                 .frame(width: 300, alignment: .leading)
-                .background(Color.white)
+                .background(.background)
                 .offset(x: isShowing ? 0 : -300)
-                
-                Spacer()
+                .animation(.easeInOut, value: isShowing)
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
         }
-        .animation(.easeInOut, value: isShowing)
         .sheet(isPresented: $isSettingsShowing) {
             SettingsView()
-                .presentationDetents([.large])
-                .presentationDragIndicator(.visible)
         }
     }
 }
@@ -169,10 +175,24 @@ private struct ConversationItem: View {
 private struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.openURL) private var openURL
+    @State private var isSignInShowing = false
     
     var body: some View {
         NavigationView {
             List {
+                Section {
+                    Button(action: {
+                        isSignInShowing = true
+                    }) {
+                        HStack {
+                            Image(systemName: "person.circle")
+                                .foregroundColor(.blue)
+                            Text("Sign In")
+                                .foregroundColor(.blue)
+                        }
+                    }
+                }
+                
                 Section {
                     Button(action: {
                         if let url = URL(string: "https://help2.minted.com/s/") {
@@ -210,19 +230,6 @@ private struct SettingsView: View {
                                 .foregroundColor(.gray)
                             Text("Privacy")
                                 .foregroundColor(.primary)
-                        }
-                    }
-                }
-                
-                Section {
-                    Button(action: {
-                        // TODO: Implement sign in functionality
-                    }) {
-                        HStack {
-                            Image(systemName: "person.circle")
-                                .foregroundColor(.blue)
-                            Text("Sign In")
-                                .foregroundColor(.blue)
                         }
                     }
                 }
@@ -270,6 +277,9 @@ private struct SettingsView: View {
                 }
                 #endif
             }
+        }
+        .sheet(isPresented: $isSignInShowing) {
+            SignInView()
         }
     }
 }
