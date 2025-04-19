@@ -285,7 +285,7 @@ public class APIService {
     }
     
     /// Create a new message in a conversation
-    public func createMessage(conversationId: String, content: String) async throws -> Message {
+    public func createMessage(conversationId: String, content: String) async throws -> (Message, Message) {
         print("APIService: Creating message in conversation \(conversationId)")
         
         guard let session = await clerk.session else {
@@ -322,17 +322,18 @@ public class APIService {
         case 201:
             // Success case - decode the response
             do {
-                let apiResponse = try JSONDecoder().decode(APIResponse<APIMessage>.self, from: data)
-                guard let apiMessage = apiResponse.data else {
+                let apiResponse = try JSONDecoder().decode(APIResponse<MessageResponse>.self, from: data)
+                guard let messageData = apiResponse.data else {
                     print("APIService: No message data in response")
                     throw APIError.invalidResponse
                 }
                 
-                // Convert API model to domain model
-                let message = convertToMessage(apiMessage)
+                // Convert API models to domain models
+                let userMessage = convertToMessage(messageData.message)
+                let aiResponse = convertToMessage(messageData.response)
                 
-                print("APIService: Successfully created message with ID: \(message.id)")
-                return message
+                print("APIService: Successfully created message with ID: \(userMessage.id)")
+                return (userMessage, aiResponse)
             } catch {
                 print("APIService: Failed to decode response: \(error)")
                 throw APIError.decodingError(error)
@@ -409,8 +410,176 @@ public class APIService {
         }
     }
     
+    /// Generate and update conversation title
+    public func generateTitle(conversationId: String, content: String) async throws -> Conversation {
+        print("APIService: Generating title for conversation \(conversationId)")
+        
+        guard let session = await clerk.session else {
+            print("APIService: No active session found")
+            throw APIError.noActiveSession
+        }
+        
+        guard let token = try await session.getToken() else {
+            print("APIService: Failed to get session token")
+            throw APIError.noActiveSession
+        }
+        
+        let url = URL(string: "\(baseURL)/conversations/\(conversationId)/title")!
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        setupRequestHeaders(&request, token: token.jwt)
+        
+        // Create request body with content
+        let body: [String: String] = ["content": content]
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+        
+        print("APIService: Making request to \(url)")
+        let (data, response) = try await URLSession.shared.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse else {
+            print("APIService: Invalid response type")
+            throw APIError.invalidResponse
+        }
+        
+        print("APIService: Response status code: \(httpResponse.statusCode)")
+        
+        switch httpResponse.statusCode {
+        case 200:
+            do {
+                // First decode the response to get the title
+                let decoder = JSONDecoder()
+                let titleResponse = try decoder.decode(APIResponse<TitleResponse>.self, from: data)
+                guard let title = titleResponse.data?.title else {
+                    print("APIService: No title in response")
+                    throw APIError.invalidResponse
+                }
+                
+                // Get the current conversation to preserve other fields
+                let currentConversation = try await getConversations().first { $0.id == conversationId }
+                guard let conversation = currentConversation else {
+                    print("APIService: Could not find conversation")
+                    throw APIError.serverError("Conversation not found")
+                }
+                
+                // Create a new conversation with the updated title
+                let updatedConversation = Conversation(
+                    id: conversation.id,
+                    title: title,
+                    createdAt: conversation.createdAt,
+                    lastModified: Int64(Date().timeIntervalSince1970 * 1000)
+                )
+                
+                print("APIService: Successfully generated title for conversation")
+                return updatedConversation
+            } catch {
+                print("APIService: Failed to decode response: \(error)")
+                throw APIError.decodingError(error)
+            }
+            
+        case 400:
+            print("APIService: Bad request")
+            throw APIError.serverError("Bad request")
+            
+        case 401:
+            print("APIService: Unauthorized")
+            throw APIError.unauthorized
+            
+        case 404:
+            print("APIService: Conversation not found")
+            throw APIError.serverError("Conversation not found")
+            
+        case 500:
+            print("APIService: Server error")
+            throw APIError.serverError("Internal server error")
+            
+        default:
+            print("APIService: Unexpected status code: \(httpResponse.statusCode)")
+            throw APIError.serverError("Unexpected status code: \(httpResponse.statusCode)")
+        }
+    }
+    
+    /// Send a message and get the AI's response
+    public func sendMessage(conversationId: String, content: String) async throws -> (message: Message, response: Message) {
+        print("APIService: Sending message to conversation \(conversationId)")
+        
+        guard let session = await clerk.session else {
+            print("APIService: No active session found")
+            throw APIError.noActiveSession
+        }
+        
+        guard let token = try await session.getToken() else {
+            print("APIService: Failed to get session token")
+            throw APIError.noActiveSession
+        }
+        
+        let url = URL(string: "\(baseURL)/conversations/\(conversationId)/messages")!
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        setupRequestHeaders(&request, token: token.jwt)
+        
+        // Create request body with content
+        let body: [String: String] = ["content": content]
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+        
+        print("APIService: Making request to \(url)")
+        let (data, response) = try await URLSession.shared.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse else {
+            print("APIService: Invalid response type")
+            throw APIError.invalidResponse
+        }
+        
+        print("APIService: Response status code: \(httpResponse.statusCode)")
+        
+        switch httpResponse.statusCode {
+        case 201:
+            do {
+                let apiResponse = try JSONDecoder().decode(APIResponse<MessageResponse>.self, from: data)
+                guard let messageResponse = apiResponse.data else {
+                    print("APIService: No message data in response")
+                    throw APIError.invalidResponse
+                }
+                
+                let userMessage = convertToMessage(messageResponse.message)
+                let aiResponse = convertToMessage(messageResponse.response)
+                print("APIService: Successfully sent message and received response")
+                return (userMessage, aiResponse)
+            } catch {
+                print("APIService: Failed to decode response: \(error)")
+                throw APIError.decodingError(error)
+            }
+            
+        case 400:
+            print("APIService: Bad request")
+            throw APIError.serverError("Bad request")
+            
+        case 401:
+            print("APIService: Unauthorized")
+            throw APIError.unauthorized
+            
+        case 500:
+            print("APIService: Server error")
+            throw APIError.serverError("Internal server error")
+            
+        default:
+            print("APIService: Unexpected status code: \(httpResponse.statusCode)")
+            throw APIError.serverError("Unexpected status code: \(httpResponse.statusCode)")
+        }
+    }
+    
     // Helper struct for empty responses
     private struct EmptyResponse: Codable {}
+    
+    // Helper struct for message response
+    private struct MessageResponse: Codable {
+        let message: APIMessage
+        let response: APIMessage
+    }
+    
+    // Helper struct for title response
+    private struct TitleResponse: Codable {
+        let title: String
+    }
     
     private func convertToConversation(_ apiConversation: APIConversation) -> Conversation {
         return Conversation(

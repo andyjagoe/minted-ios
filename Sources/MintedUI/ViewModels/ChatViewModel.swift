@@ -164,64 +164,82 @@ public class ChatViewModel: ObservableObject {
     
     /// Send a new message in the current conversation
     public func sendMessage() {
-        // Trim whitespace and newlines from the message
-        let trimmedMessage = messageText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let conversation = currentConversation else {
+            print("ChatViewModel: No current conversation")
+            return
+        }
         
-        // Ensure we have a non-empty message
-        guard !trimmedMessage.isEmpty else { return }
+        let messageText = messageText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !messageText.isEmpty else {
+            print("ChatViewModel: Message text is empty")
+            return
+        }
+        
+        // Create and add the user's message immediately
+        let userMessage = Message(
+            id: UUID().uuidString,
+            content: messageText,
+            isFromUser: true,
+            conversationId: conversation.id,
+            createdAt: Int64(Date().timeIntervalSince1970 * 1000),
+            lastModified: Int64(Date().timeIntervalSince1970 * 1000)
+        )
+        
+        // Add the user's message to the current messages
+        currentMessages.append(userMessage)
+        
+        // Clear the message text
+        self.messageText = ""
         
         Task {
             do {
-                // Check for active session
-                guard let session = await Clerk.shared.session else {
-                    print("No active session, cannot send message")
-                    return
-                }
-                
-                // If no active conversation, create one first
-                if currentConversation == nil {
-                    let newConversation = try await APIService.shared.createConversation()
-                    conversations.append(newConversation)
-                    currentConversation = newConversation
-                    currentMessages = []
-                }
-                
-                // Now we should have an active conversation
-                guard let conversation = currentConversation else {
-                    print("Failed to create or set active conversation")
-                    return
-                }
-                
-                // Send the message to the API
-                let newMessage = try await APIService.shared.createMessage(
+                print("ChatViewModel: Sending message to conversation \(conversation.id)")
+                let response = try await APIService.shared.sendMessage(
                     conversationId: conversation.id,
-                    content: trimmedMessage
+                    content: messageText
                 )
                 
-                // Update the messages array
-                currentMessages.append(newMessage)
-                
-                // Update the conversation title if it's the first message
-                if currentMessages.count == 1 {
-                    let updatedConversation = Conversation(
-                        id: conversation.id,
-                        title: trimmedMessage,
-                        createdAt: conversation.createdAt,
-                        lastModified: Int64(Date().timeIntervalSince1970)
-                    )
+                // Update the messages with the API response
+                await MainActor.run {
+                    // Remove the temporary user message
+                    currentMessages.removeAll { $0.id == userMessage.id }
                     
-                    // Update the conversations array
-                    if let index = conversations.firstIndex(where: { $0.id == conversation.id }) {
-                        conversations[index] = updatedConversation
-                        currentConversation = updatedConversation
+                    // Add both the user's message and the AI's response from the API
+                    currentMessages.append(response.message)
+                    currentMessages.append(response.response)
+                    
+                    // If this is the first message in the conversation (only one user message),
+                    // generate a title based on the user's message
+                    if currentMessages.filter({ $0.isFromUser }).count == 1 {
+                        Task {
+                            do {
+                                let updatedConversation = try await APIService.shared.generateTitle(
+                                    conversationId: conversation.id,
+                                    content: messageText
+                                )
+                                
+                                // Update the conversation with the new title
+                                await MainActor.run {
+                                    if let index = conversations.firstIndex(where: { $0.id == conversation.id }) {
+                                        conversations[index] = updatedConversation
+                                    }
+                                    currentConversation = updatedConversation
+                                    
+                                    // Notify that conversations have been updated
+                                    NotificationCenter.default.post(name: .conversationsUpdated, object: nil)
+                                }
+                            } catch {
+                                print("ChatViewModel: Failed to generate title: \(error)")
+                            }
+                        }
                     }
                 }
-                
-                // Clear the input
-                messageText = ""
-                
             } catch {
-                print("Error sending message: \(error)")
+                print("ChatViewModel: Failed to send message: \(error)")
+                // Remove the temporary message if the API call fails
+                await MainActor.run {
+                    currentMessages.removeAll { $0.id == userMessage.id }
+                }
             }
         }
     }
