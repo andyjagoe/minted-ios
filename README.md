@@ -50,12 +50,3 @@ The application integrates with the Minted AI API, providing endpoints for:
 3. Start chatting with the AI assistant
 4. Use the carousel suggestions for quick design requests
 5. Manage conversations through the side menu
-
-
-## Architecture
-
-MintedUI follows a clean architecture pattern with:
-
-- **Views**: SwiftUI views for the user interface
-- **ViewModels**: Business logic and state management
-- **Models**: Data structures and types 
