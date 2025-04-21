@@ -11,11 +11,12 @@ import Clerk
 
 public class APIService {
     public static let shared = APIService()
-    private let baseURL = "https://minted-api.vercel.app/api"
+    private let baseURL: String
     private let clerk: Clerk
     
     public init(clerk: Clerk = Clerk.shared) {
         self.clerk = clerk
+        self.baseURL = AppConfig.apiBaseURL
     }
     
     private func setupRequestHeaders(_ request: inout URLRequest, token: String) {
