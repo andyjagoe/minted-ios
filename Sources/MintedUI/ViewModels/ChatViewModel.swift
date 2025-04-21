@@ -73,24 +73,19 @@ public class ChatViewModel: ObservableObject {
     }
     
     /// Create a new conversation
-    public func createNewConversation() {
-        Task {
-            do {
-                // Check for active session
-                guard let session = await Clerk.shared.session else {
-                    print("No active session, cannot create conversation")
-                    return
-                }
-                
-                let newConversation = try await APIService.shared.createConversation()
-                conversations.append(newConversation)
-                currentConversation = newConversation
-                currentMessages = []
-                shouldFocusInput = true
-            } catch {
-                print("Error creating conversation: \(error)")
-            }
+    public func createNewConversation() async throws {
+        // Check for active session
+        guard let session = await Clerk.shared.session else {
+            print("No active session, cannot create conversation")
+            // Consider throwing a specific error here if needed
+            throw APIError.noActiveSession // Or a more appropriate error
         }
+        
+        let newConversation = try await APIService.shared.createConversation()
+        conversations.append(newConversation)
+        currentConversation = newConversation
+        currentMessages = []
+        shouldFocusInput = true
     }
     
     /// Switch to a different conversation
@@ -164,14 +159,34 @@ public class ChatViewModel: ObservableObject {
     
     /// Send a new message in the current conversation
     public func sendMessage() {
-        guard let conversation = currentConversation else {
-            print("ChatViewModel: No current conversation")
-            return
-        }
-        
         let messageText = messageText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !messageText.isEmpty else {
             print("ChatViewModel: Message text is empty")
+            return
+        }
+        
+        // If there's no current conversation, create one first
+        if currentConversation == nil {
+            Task {
+                do {
+                    // Create a new conversation and wait for it to complete
+                    try await createNewConversation()
+                    // Now send the message in the newly created conversation
+                    sendMessageInCurrentConversation(messageText: messageText) // No longer needs await here
+                } catch {
+                    print("ChatViewModel: Error creating conversation or sending message: \(error)")
+                }
+            }
+        } else {
+            // Send message in existing conversation
+            sendMessageInCurrentConversation(messageText: messageText)
+        }
+    }
+    
+    /// Helper function to send a message in the current conversation
+    private func sendMessageInCurrentConversation(messageText: String) {
+        guard let conversation = currentConversation else {
+            print("ChatViewModel: No current conversation")
             return
         }
         

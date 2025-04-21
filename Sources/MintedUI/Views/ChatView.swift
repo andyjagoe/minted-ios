@@ -58,11 +58,22 @@ public struct ChatView: View {
                                 SuggestionBubble(
                                     suggestion: suggestion,
                                     onTap: {
-                                        if viewModel.currentConversation == nil {
-                                            viewModel.createNewConversation()
+                                        // Wrap async operations in a Task
+                                        Task {
+                                            do {
+                                                // If no current conversation, try creating one
+                                                if viewModel.currentConversation == nil {
+                                                    try await viewModel.createNewConversation()
+                                                }
+                                                // After potential creation, set message and send
+                                                viewModel.messageText = suggestion.prompt
+                                                viewModel.sendMessage()
+                                            } catch {
+                                                // Handle potential errors during creation
+                                                print("Error creating conversation from suggestion: \\(error)")
+                                                // Optionally show an error message to the user
+                                            }
                                         }
-                                        viewModel.messageText = suggestion.prompt
-                                        viewModel.sendMessage()
                                     }
                                 )
                             }
@@ -208,7 +219,16 @@ public struct ChatView: View {
             
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button(action: {
-                    viewModel.createNewConversation()
+                    // Wrap async operations in a Task
+                    Task {
+                        do {
+                            try await viewModel.createNewConversation()
+                        } catch {
+                            // Handle potential errors during creation
+                            print("Error creating conversation from toolbar: \\(error)")
+                            // Optionally show an error message to the user
+                        }
+                    }
                 }) {
                     Image(systemName: "square.and.pencil")
                         .font(.system(size: 20))
@@ -230,7 +250,16 @@ public struct ChatView: View {
             
             ToolbarItem(placement: .automatic) {
                 Button(action: {
-                    viewModel.createNewConversation()
+                    // Wrap async operations in a Task
+                    Task {
+                        do {
+                            try await viewModel.createNewConversation()
+                        } catch {
+                            // Handle potential errors during creation
+                            print("Error creating conversation from toolbar (macOS): \\(error)")
+                            // Optionally show an error message to the user
+                        }
+                    }
                 }) {
                     Image(systemName: "square.and.pencil")
                         .font(.system(size: 20))

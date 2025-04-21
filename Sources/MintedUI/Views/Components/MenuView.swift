@@ -58,8 +58,17 @@ public struct MenuView: View {
                         .cornerRadius(8)
                         
                         Button(action: {
-                            viewModel.createNewConversation()
-                            isShowing = false
+                            // Wrap async operations in a Task
+                            Task {
+                                do {
+                                    try await viewModel.createNewConversation()
+                                    isShowing = false // Close menu on success
+                                } catch {
+                                    // Handle potential errors during creation
+                                    print("Error creating conversation from menu: \\(error)")
+                                    // Optionally show an error message to the user
+                                }
+                            }
                         }) {
                             Image(systemName: "square.and.pencil")
                                 .font(.system(size: 20))
