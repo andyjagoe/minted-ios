@@ -30,6 +30,15 @@ The application integrates with the Minted AI API, providing endpoints for:
 - Title generation
 - Authentication
 
+### Environment Configuration
+
+The application supports two environments:
+
+- **Development**: Uses `http://localhost:3000/api` (Debug builds)
+- **Production**: Uses `https://minted-api.vercel.app/api` (Release builds)
+
+The environment is automatically selected based on the build configuration.
+
 ## Requirements
 
 - iOS 15.0+ / macOS 12.0+
