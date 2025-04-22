@@ -36,6 +36,12 @@ public class ChatViewModel: ObservableObject {
     /// Published property to control input field focus
     @Published public var shouldFocusInput: Bool = false
     
+    /// Published property to track when we're waiting for an AI response
+    @Published public var isWaitingForResponse: Bool = false
+    
+    /// Published property to track the last error message
+    @Published public var lastErrorMessage: String?
+    
     /// Task for handling simulated responses
     private var responseTask: Task<Void, Never>?
     
@@ -203,8 +209,12 @@ public class ChatViewModel: ObservableObject {
         // Add the user's message to the current messages
         currentMessages.append(userMessage)
         
-        // Clear the message text
+        // Clear the message text and any previous error
         self.messageText = ""
+        self.lastErrorMessage = nil
+        
+        // Set waiting state
+        isWaitingForResponse = true
         
         Task {
             do {
@@ -222,6 +232,9 @@ public class ChatViewModel: ObservableObject {
                     // Add both the user's message and the AI's response from the API
                     currentMessages.append(response.message)
                     currentMessages.append(response.response)
+                    
+                    // Clear waiting state
+                    isWaitingForResponse = false
                     
                     // If this is the first message in the conversation (only one user message),
                     // generate a title based on the user's message
@@ -254,6 +267,8 @@ public class ChatViewModel: ObservableObject {
                 // Remove the temporary message if the API call fails
                 await MainActor.run {
                     currentMessages.removeAll { $0.id == userMessage.id }
+                    isWaitingForResponse = false
+                    lastErrorMessage = "Failed to send message. Please try again."
                 }
             }
         }

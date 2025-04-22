@@ -32,6 +32,29 @@ public struct ChatView: View {
                                 ChatBubble(message: message)
                                     .id(message.id)
                             }
+                            
+                            if viewModel.isWaitingForResponse {
+                                HStack {
+                                    TypingIndicator()
+                                        .padding(12)
+                                        .background(Color.gray.opacity(0.1))
+                                        .cornerRadius(16)
+                                    Spacer()
+                                }
+                                .padding(.horizontal)
+                            }
+                            
+                            if let errorMessage = viewModel.lastErrorMessage {
+                                HStack {
+                                    Text(errorMessage)
+                                        .foregroundColor(.red)
+                                        .padding(12)
+                                        .background(Color.red.opacity(0.1))
+                                        .cornerRadius(16)
+                                    Spacer()
+                                }
+                                .padding(.horizontal)
+                            }
                         }
                         .padding()
                     }
