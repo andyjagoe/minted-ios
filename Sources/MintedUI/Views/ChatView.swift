@@ -20,7 +20,7 @@ public struct ChatView: View {
         ZStack {
             VStack(spacing: 0) {
                 // Carousel
-                if viewModel.currentMessages.isEmpty {
+                if viewModel.currentMessages.isEmpty && !viewModel.isLoadingMessages && !viewModel.isLoadingConversations {
                     CarouselView(viewModel: viewModel)
                 }
                 
@@ -28,7 +28,7 @@ public struct ChatView: View {
                 ScrollViewReader { proxy in
                     ScrollView {
                         LazyVStack(spacing: 16) {
-                            if viewModel.isLoadingMessages {
+                            if viewModel.isLoadingMessages || viewModel.isLoadingConversations {
                                 LoadingIndicator()
                                     .frame(height: 100)
                             } else {
@@ -79,7 +79,7 @@ public struct ChatView: View {
                 }
                 
                 // Suggestion bubbles
-                if viewModel.currentMessages.isEmpty {
+                if viewModel.currentMessages.isEmpty && !viewModel.isLoadingMessages && !viewModel.isLoadingConversations {
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 12) {
                             ForEach(Suggestion.all) { suggestion in

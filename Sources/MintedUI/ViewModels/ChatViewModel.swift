@@ -45,6 +45,9 @@ public class ChatViewModel: ObservableObject {
     /// Published property to track when messages are being loaded
     @Published public var isLoadingMessages: Bool = false
     
+    /// Published property to track when conversations are being loaded
+    @Published public var isLoadingConversations: Bool = false
+    
     /// Task for handling simulated responses
     private var responseTask: Task<Void, Never>?
     
@@ -63,9 +66,11 @@ public class ChatViewModel: ObservableObject {
     private func loadConversations() {
         Task {
             do {
+                isLoadingConversations = true
                 // Check for active session
                 guard let session = await Clerk.shared.session else {
                     print("No active session, skipping conversation load")
+                    isLoadingConversations = false
                     return
                 }
                 
@@ -75,8 +80,11 @@ public class ChatViewModel: ObservableObject {
                     currentConversation = conversations[0]
                     loadMessages(for: conversations[0])
                 }
+                isLoadingConversations = false
             } catch {
                 print("Error loading conversations: \(error)")
+                isLoadingConversations = false
+                lastErrorMessage = "Failed to load conversations. Please try again."
             }
         }
     }
