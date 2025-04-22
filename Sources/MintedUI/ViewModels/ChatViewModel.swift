@@ -42,6 +42,9 @@ public class ChatViewModel: ObservableObject {
     /// Published property to track the last error message
     @Published public var lastErrorMessage: String?
     
+    /// Published property to track when messages are being loaded
+    @Published public var isLoadingMessages: Bool = false
+    
     /// Task for handling simulated responses
     private var responseTask: Task<Void, Never>?
     
@@ -104,9 +107,13 @@ public class ChatViewModel: ObservableObject {
     private func loadMessages(for conversation: Conversation) {
         Task {
             do {
+                isLoadingMessages = true
                 currentMessages = try await APIService.shared.getMessages(conversationId: conversation.id)
+                isLoadingMessages = false
             } catch {
                 print("Error loading messages: \(error)")
+                isLoadingMessages = false
+                lastErrorMessage = "Failed to load messages. Please try again."
             }
         }
     }

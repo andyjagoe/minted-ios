@@ -28,32 +28,37 @@ public struct ChatView: View {
                 ScrollViewReader { proxy in
                     ScrollView {
                         LazyVStack(spacing: 16) {
-                            ForEach(viewModel.currentMessages) { message in
-                                ChatBubble(message: message)
-                                    .id(message.id)
-                            }
-                            
-                            if viewModel.isWaitingForResponse {
-                                HStack {
-                                    TypingIndicator()
-                                        .padding(12)
-                                        .background(Color.gray.opacity(0.1))
-                                        .cornerRadius(16)
-                                    Spacer()
+                            if viewModel.isLoadingMessages {
+                                LoadingIndicator()
+                                    .frame(height: 100)
+                            } else {
+                                ForEach(viewModel.currentMessages) { message in
+                                    ChatBubble(message: message)
+                                        .id(message.id)
                                 }
-                                .padding(.horizontal)
-                            }
-                            
-                            if let errorMessage = viewModel.lastErrorMessage {
-                                HStack {
-                                    Text(errorMessage)
-                                        .foregroundColor(.red)
-                                        .padding(12)
-                                        .background(Color.red.opacity(0.1))
-                                        .cornerRadius(16)
-                                    Spacer()
+                                
+                                if viewModel.isWaitingForResponse {
+                                    HStack {
+                                        TypingIndicator()
+                                            .padding(12)
+                                            .background(Color.gray.opacity(0.1))
+                                            .cornerRadius(16)
+                                        Spacer()
+                                    }
+                                    .padding(.horizontal)
                                 }
-                                .padding(.horizontal)
+                                
+                                if let errorMessage = viewModel.lastErrorMessage {
+                                    HStack {
+                                        Text(errorMessage)
+                                            .foregroundColor(.red)
+                                            .padding(12)
+                                            .background(Color.red.opacity(0.1))
+                                            .cornerRadius(16)
+                                        Spacer()
+                                    }
+                                    .padding(.horizontal)
+                                }
                             }
                         }
                         .padding()
