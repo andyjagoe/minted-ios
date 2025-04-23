@@ -1,4 +1,5 @@
 import Foundation
+import MintedUI
 
 public enum AppConfig {
     public enum Environment {
@@ -23,8 +24,10 @@ public enum AppConfig {
     
     public static var apiBaseURL: String {
         let url = environment.apiBaseURL
-        print("AppConfig: Using \(environment) environment")
-        print("AppConfig: API Base URL: \(url)")
+        #if DEBUG
+        DebugLog.log("Using \(environment) environment", category: "AppConfig")
+        DebugLog.log("API Base URL: \(url)", category: "AppConfig")
+        #endif
         return url
     }
 } 

@@ -1,5 +1,6 @@
 import Foundation
 import Clerk
+import MintedUI
 
 @MainActor
 public enum ClerkConfig {
@@ -9,13 +10,19 @@ public enum ClerkConfig {
     private static var isConfigured = false
     
     public static func configure() async throws {
-        print("ClerkConfig: Starting configuration")
+        #if DEBUG
+        DebugLog.log("Starting configuration", category: "ClerkConfig")
+        #endif
         guard !isConfigured else {
-            print("ClerkConfig: Already configured")
+            #if DEBUG
+            DebugLog.log("Already configured", category: "ClerkConfig")
+            #endif
             return
         }
         
-        print("ClerkConfig: Configuring with key: \(publishableKey)")
+        #if DEBUG
+        DebugLog.log("Configuring with key: \(publishableKey)", category: "ClerkConfig")
+        #endif
         
         do {
             // Configure with additional options
@@ -25,13 +32,17 @@ public enum ClerkConfig {
             )
             
             // Load the Clerk instance
-            print("ClerkConfig: Loading Clerk instance")
+            #if DEBUG
+            DebugLog.log("Loading Clerk instance", category: "ClerkConfig")
+            #endif
             try await Clerk.shared.load()
             
             // Print current client state
-            print("ClerkConfig: Current client state:")
-            print("- Client exists: \(Clerk.shared.client != nil)")
-            print("- Is loaded: \(Clerk.shared.isLoaded)")
+            #if DEBUG
+            DebugLog.log("Current client state:", category: "ClerkConfig")
+            DebugLog.log("- Client exists: \(Clerk.shared.client != nil)", category: "ClerkConfig")
+            DebugLog.log("- Is loaded: \(Clerk.shared.isLoaded)", category: "ClerkConfig")
+            #endif
             
             // Verify the configuration
             if !Clerk.shared.isLoaded {
@@ -39,16 +50,24 @@ public enum ClerkConfig {
             }
             
             isConfigured = true
-            print("ClerkConfig: Configuration complete")
+            #if DEBUG
+            DebugLog.log("Configuration complete", category: "ClerkConfig")
+            #endif
         } catch {
-            print("ClerkConfig: Configuration failed with error: \(error)")
+            #if DEBUG
+            DebugLog.log("Configuration failed with error: \(error)", category: "ClerkConfig")
+            #endif
             throw error
         }
     }
     
     public static func signOut() async throws {
-        print("ClerkConfig: Attempting to sign out")
+        #if DEBUG
+        DebugLog.log("Attempting to sign out", category: "ClerkConfig")
+        #endif
         try await Clerk.shared.signOut()
-        print("ClerkConfig: Sign out successful")
+        #if DEBUG
+        DebugLog.log("Sign out successful", category: "ClerkConfig")
+        #endif
     }
 } 

@@ -19,6 +19,12 @@ public class APIService {
         self.baseURL = AppConfig.apiBaseURL
     }
     
+    #if DEBUG
+    private func debugLog(_ message: String) {
+        print("APIService: \(message)")
+    }
+    #endif
+    
     private func setupRequestHeaders(_ request: inout URLRequest, token: String) {
         request.addValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         request.addValue("application/json", forHTTPHeaderField: "Accept")
@@ -32,14 +38,20 @@ public class APIService {
     }
     
     public func getConversations() async throws -> [Conversation] {
-        print("APIService: Getting conversations")
+        #if DEBUG
+        debugLog("Getting conversations")
+        #endif
         guard let session = await clerk.session else {
-            print("APIService: No active session found")
+            #if DEBUG
+            debugLog("No active session found")
+            #endif
             throw APIError.noActiveSession
         }
         
         guard let token = try await session.getToken() else {
-            print("APIService: Failed to get session token")
+            #if DEBUG
+            debugLog("Failed to get session token")
+            #endif
             throw APIError.noActiveSession
         }
         
@@ -48,25 +60,35 @@ public class APIService {
         request.httpMethod = "GET"
         setupRequestHeaders(&request, token: token.jwt)
         
-        print("APIService: Making request to \(url)")
+        #if DEBUG
+        debugLog("Making request to \(url)")
+        #endif
         let (data, response) = try await URLSession.shared.data(for: request)
         
         guard let httpResponse = response as? HTTPURLResponse else {
-            print("APIService: Invalid response type")
+            #if DEBUG
+            debugLog("Invalid response type")
+            #endif
             throw APIError.invalidResponse
         }
         
-        print("APIService: Response status code: \(httpResponse.statusCode)")
+        #if DEBUG
+        debugLog("Response status code: \(httpResponse.statusCode)")
+        #endif
         
         guard httpResponse.statusCode == 200 else {
-            print("APIService: Server returned error: \(httpResponse.statusCode)")
+            #if DEBUG
+            debugLog("Server returned error: \(httpResponse.statusCode)")
+            #endif
             throw APIError.serverError("Unexpected status code: \(httpResponse.statusCode)")
         }
         
         do {
             // First decode the API response wrapper
             let apiResponse = try JSONDecoder().decode(APIResponse<[APIConversation]>.self, from: data)
-            print("APIService: Successfully decoded response with \(apiResponse.data?.count ?? 0) conversations")
+            #if DEBUG
+            debugLog("Successfully decoded response with \(apiResponse.data?.count ?? 0) conversations")
+            #endif
             
             // Convert API models to domain models
             let conversations = (apiResponse.data ?? []).map { apiConversation in
@@ -74,20 +96,28 @@ public class APIService {
             }
             return conversations
         } catch {
-            print("APIService: Failed to decode response: \(error)")
+            #if DEBUG
+            debugLog("Failed to decode response: \(error)")
+            #endif
             throw APIError.decodingError(error)
         }
     }
     
     public func createConversation(title: String? = nil) async throws -> Conversation {
-        print("APIService: Creating new conversation")
+        #if DEBUG
+        debugLog("Creating new conversation")
+        #endif
         guard let session = await clerk.session else {
-            print("APIService: No active session found")
+            #if DEBUG
+            debugLog("No active session found")
+            #endif
             throw APIError.noActiveSession
         }
         
         guard let token = try await session.getToken() else {
-            print("APIService: Failed to get session token")
+            #if DEBUG
+            debugLog("Failed to get session token")
+            #endif
             throw APIError.noActiveSession
         }
         
@@ -100,15 +130,21 @@ public class APIService {
         let body: [String: Any?] = ["title": title]
         request.httpBody = try JSONSerialization.data(withJSONObject: body.compactMapValues { $0 })
         
-        print("APIService: Making request to \(url)")
+        #if DEBUG
+        debugLog("Making request to \(url)")
+        #endif
         let (data, response) = try await URLSession.shared.data(for: request)
         
         guard let httpResponse = response as? HTTPURLResponse else {
-            print("APIService: Invalid response type")
+            #if DEBUG
+            debugLog("Invalid response type")
+            #endif
             throw APIError.invalidResponse
         }
         
-        print("APIService: Response status code: \(httpResponse.statusCode)")
+        #if DEBUG
+        debugLog("Response status code: \(httpResponse.statusCode)")
+        #endif
         
         // Handle different status codes according to API spec
         switch httpResponse.statusCode {
@@ -117,47 +153,67 @@ public class APIService {
             do {
                 let apiResponse = try JSONDecoder().decode(APIResponse<APIConversation>.self, from: data)
                 guard let apiConversation = apiResponse.data else {
-                    print("APIService: No conversation data in response")
+                    #if DEBUG
+                    debugLog("No conversation data in response")
+                    #endif
                     throw APIError.invalidResponse
                 }
                 
                 // Convert API model to domain model
                 let conversation = convertToConversation(apiConversation)
                 
-                print("APIService: Successfully created conversation with ID: \(conversation.id)")
+                #if DEBUG
+                debugLog("Successfully created conversation with ID: \(conversation.id)")
+                #endif
                 return conversation
             } catch {
-                print("APIService: Failed to decode response: \(error)")
+                #if DEBUG
+                debugLog("Failed to decode response: \(error)")
+                #endif
                 throw APIError.decodingError(error)
             }
             
         case 400:
-            print("APIService: Bad request")
+            #if DEBUG
+            debugLog("Bad request")
+            #endif
             throw APIError.serverError("Bad request")
             
         case 401:
-            print("APIService: Unauthorized")
+            #if DEBUG
+            debugLog("Unauthorized")
+            #endif
             throw APIError.unauthorized
             
         case 500:
-            print("APIService: Server error")
+            #if DEBUG
+            debugLog("Server error")
+            #endif
             throw APIError.serverError("Internal server error")
             
         default:
-            print("APIService: Unexpected status code: \(httpResponse.statusCode)")
+            #if DEBUG
+            debugLog("Unexpected status code: \(httpResponse.statusCode)")
+            #endif
             throw APIError.serverError("Unexpected status code: \(httpResponse.statusCode)")
         }
     }
     
     public func deleteConversation(id: String) async throws {
-        print("APIService: Deleting conversation with ID: \(id)")
+        #if DEBUG
+        debugLog("Deleting conversation with ID: \(id)")
+        #endif
         guard let session = await clerk.session else {
-            print("APIService: No active session found")
+            #if DEBUG
+            debugLog("No active session found")
+            #endif
             throw APIError.noActiveSession
         }
         
         guard let token = try await session.getToken() else {
-            print("APIService: Failed to get session token")
+            #if DEBUG
+            debugLog("Failed to get session token")
+            #endif
             throw APIError.noActiveSession
         }
         
@@ -166,15 +222,21 @@ public class APIService {
         request.httpMethod = "DELETE"
         setupRequestHeaders(&request, token: token.jwt)
         
-        print("APIService: Making request to \(url)")
+        #if DEBUG
+        debugLog("Making request to \(url)")
+        #endif
         let (data, response) = try await URLSession.shared.data(for: request)
         
         guard let httpResponse = response as? HTTPURLResponse else {
-            print("APIService: Invalid response type")
+            #if DEBUG
+            debugLog("Invalid response type")
+            #endif
             throw APIError.invalidResponse
         }
         
-        print("APIService: Response status code: \(httpResponse.statusCode)")
+        #if DEBUG
+        debugLog("Response status code: \(httpResponse.statusCode)")
+        #endif
         
         // Handle different status codes according to API spec
         switch httpResponse.statusCode {
@@ -186,40 +248,58 @@ public class APIService {
                 if apiResponse.error != nil {
                     throw APIError.serverError(apiResponse.error ?? "Unknown error")
                 }
-                print("APIService: Successfully deleted conversation")
+                #if DEBUG
+                debugLog("Successfully deleted conversation")
+                #endif
                 return
             } catch {
-                print("APIService: Failed to decode response: \(error)")
+                #if DEBUG
+                debugLog("Failed to decode response: \(error)")
+                #endif
                 throw APIError.decodingError(error)
             }
             
         case 401:
-            print("APIService: Unauthorized")
+            #if DEBUG
+            debugLog("Unauthorized")
+            #endif
             throw APIError.unauthorized
             
         case 404:
-            print("APIService: Conversation not found")
+            #if DEBUG
+            debugLog("Conversation not found")
+            #endif
             throw APIError.serverError("Conversation not found")
             
         case 500:
-            print("APIService: Server error")
+            #if DEBUG
+            debugLog("Server error")
+            #endif
             throw APIError.serverError("Internal server error")
             
         default:
-            print("APIService: Unexpected status code: \(httpResponse.statusCode)")
+            #if DEBUG
+            debugLog("Unexpected status code: \(httpResponse.statusCode)")
+            #endif
             throw APIError.serverError("Unexpected status code: \(httpResponse.statusCode)")
         }
     }
     
     public func updateConversation(id: String, title: String) async throws -> Conversation {
-        print("APIService: Updating conversation with ID: \(id)")
+        #if DEBUG
+        debugLog("Updating conversation with ID: \(id)")
+        #endif
         guard let session = await clerk.session else {
-            print("APIService: No active session found")
+            #if DEBUG
+            debugLog("No active session found")
+            #endif
             throw APIError.noActiveSession
         }
         
         guard let token = try await session.getToken() else {
-            print("APIService: Failed to get session token")
+            #if DEBUG
+            debugLog("Failed to get session token")
+            #endif
             throw APIError.noActiveSession
         }
         
@@ -232,15 +312,21 @@ public class APIService {
         let body: [String: String] = ["title": title]
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
         
-        print("APIService: Making request to \(url)")
+        #if DEBUG
+        debugLog("Making request to \(url)")
+        #endif
         let (data, response) = try await URLSession.shared.data(for: request)
         
         guard let httpResponse = response as? HTTPURLResponse else {
-            print("APIService: Invalid response type")
+            #if DEBUG
+            debugLog("Invalid response type")
+            #endif
             throw APIError.invalidResponse
         }
         
-        print("APIService: Response status code: \(httpResponse.statusCode)")
+        #if DEBUG
+        debugLog("Response status code: \(httpResponse.statusCode)")
+        #endif
         
         // Handle different status codes according to API spec
         switch httpResponse.statusCode {
@@ -249,53 +335,75 @@ public class APIService {
             do {
                 let apiResponse = try JSONDecoder().decode(APIResponse<APIConversation>.self, from: data)
                 guard let apiConversation = apiResponse.data else {
-                    print("APIService: No conversation data in response")
+                    #if DEBUG
+                    debugLog("No conversation data in response")
+                    #endif
                     throw APIError.invalidResponse
                 }
                 
                 // Convert API model to domain model
                 let conversation = convertToConversation(apiConversation)
                 
-                print("APIService: Successfully updated conversation with ID: \(conversation.id)")
+                #if DEBUG
+                debugLog("Successfully updated conversation with ID: \(conversation.id)")
+                #endif
                 return conversation
             } catch {
-                print("APIService: Failed to decode response: \(error)")
+                #if DEBUG
+                debugLog("Failed to decode response: \(error)")
+                #endif
                 throw APIError.decodingError(error)
             }
             
         case 400:
-            print("APIService: Bad request")
+            #if DEBUG
+            debugLog("Bad request")
+            #endif
             throw APIError.serverError("Bad request")
             
         case 401:
-            print("APIService: Unauthorized")
+            #if DEBUG
+            debugLog("Unauthorized")
+            #endif
             throw APIError.unauthorized
             
         case 404:
-            print("APIService: Conversation not found")
+            #if DEBUG
+            debugLog("Conversation not found")
+            #endif
             throw APIError.serverError("Conversation not found")
             
         case 500:
-            print("APIService: Server error")
+            #if DEBUG
+            debugLog("Server error")
+            #endif
             throw APIError.serverError("Internal server error")
             
         default:
-            print("APIService: Unexpected status code: \(httpResponse.statusCode)")
+            #if DEBUG
+            debugLog("Unexpected status code: \(httpResponse.statusCode)")
+            #endif
             throw APIError.serverError("Unexpected status code: \(httpResponse.statusCode)")
         }
     }
     
     /// Create a new message in a conversation
     public func createMessage(conversationId: String, content: String) async throws -> (Message, Message) {
-        print("APIService: Creating message in conversation \(conversationId)")
+        #if DEBUG
+        debugLog("Creating message in conversation \(conversationId)")
+        #endif
         
         guard let session = await clerk.session else {
-            print("APIService: No active session found")
+            #if DEBUG
+            debugLog("No active session found")
+            #endif
             throw APIError.noActiveSession
         }
         
         guard let token = try await session.getToken() else {
-            print("APIService: Failed to get session token")
+            #if DEBUG
+            debugLog("Failed to get session token")
+            #endif
             throw APIError.noActiveSession
         }
         
@@ -308,15 +416,21 @@ public class APIService {
         let body: [String: String] = ["content": content]
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
         
-        print("APIService: Making request to \(url)")
+        #if DEBUG
+        debugLog("Making request to \(url)")
+        #endif
         let (data, response) = try await URLSession.shared.data(for: request)
         
         guard let httpResponse = response as? HTTPURLResponse else {
-            print("APIService: Invalid response type")
+            #if DEBUG
+            debugLog("Invalid response type")
+            #endif
             throw APIError.invalidResponse
         }
         
-        print("APIService: Response status code: \(httpResponse.statusCode)")
+        #if DEBUG
+        debugLog("Response status code: \(httpResponse.statusCode)")
+        #endif
         
         // Handle different status codes according to API spec
         switch httpResponse.statusCode {
@@ -325,7 +439,9 @@ public class APIService {
             do {
                 let apiResponse = try JSONDecoder().decode(APIResponse<MessageResponse>.self, from: data)
                 guard let messageData = apiResponse.data else {
-                    print("APIService: No message data in response")
+                    #if DEBUG
+                    debugLog("No message data in response")
+                    #endif
                     throw APIError.invalidResponse
                 }
                 
@@ -333,42 +449,60 @@ public class APIService {
                 let userMessage = convertToMessage(messageData.message)
                 let aiResponse = convertToMessage(messageData.response)
                 
-                print("APIService: Successfully created message with ID: \(userMessage.id)")
+                #if DEBUG
+                debugLog("Successfully created message with ID: \(userMessage.id)")
+                #endif
                 return (userMessage, aiResponse)
             } catch {
-                print("APIService: Failed to decode response: \(error)")
+                #if DEBUG
+                debugLog("Failed to decode response: \(error)")
+                #endif
                 throw APIError.decodingError(error)
             }
             
         case 400:
-            print("APIService: Bad request")
+            #if DEBUG
+            debugLog("Bad request")
+            #endif
             throw APIError.serverError("Bad request")
             
         case 401:
-            print("APIService: Unauthorized")
+            #if DEBUG
+            debugLog("Unauthorized")
+            #endif
             throw APIError.unauthorized
             
         case 500:
-            print("APIService: Server error")
+            #if DEBUG
+            debugLog("Server error")
+            #endif
             throw APIError.serverError("Internal server error")
             
         default:
-            print("APIService: Unexpected status code: \(httpResponse.statusCode)")
+            #if DEBUG
+            debugLog("Unexpected status code: \(httpResponse.statusCode)")
+            #endif
             throw APIError.serverError("Unexpected status code: \(httpResponse.statusCode)")
         }
     }
     
     /// Get all messages for a conversation
     public func getMessages(conversationId: String) async throws -> [Message] {
-        print("APIService: Fetching messages for conversation \(conversationId)")
+        #if DEBUG
+        debugLog("Fetching messages for conversation \(conversationId)")
+        #endif
         
         guard let session = await clerk.session else {
-            print("APIService: No active session found")
+            #if DEBUG
+            debugLog("No active session found")
+            #endif
             throw APIError.noActiveSession
         }
         
         guard let token = try await session.getToken() else {
-            print("APIService: Failed to get session token")
+            #if DEBUG
+            debugLog("Failed to get session token")
+            #endif
             throw APIError.noActiveSession
         }
         
@@ -377,15 +511,21 @@ public class APIService {
         request.httpMethod = "GET"
         setupRequestHeaders(&request, token: token.jwt)
         
-        print("APIService: Making request to \(url)")
+        #if DEBUG
+        debugLog("Making request to \(url)")
+        #endif
         let (data, response) = try await URLSession.shared.data(for: request)
         
         guard let httpResponse = response as? HTTPURLResponse else {
-            print("APIService: Invalid response type")
+            #if DEBUG
+            debugLog("Invalid response type")
+            #endif
             throw APIError.invalidResponse
         }
         
-        print("APIService: Response status code: \(httpResponse.statusCode)")
+        #if DEBUG
+        debugLog("Response status code: \(httpResponse.statusCode)")
+        #endif
         
         switch httpResponse.statusCode {
         case 200:
@@ -394,34 +534,48 @@ public class APIService {
             
             // Convert API models to domain models
             let messages = (apiResponse.data ?? []).map { convertToMessage($0) }
-            print("APIService: Successfully fetched \(messages.count) messages")
+            #if DEBUG
+            debugLog("Successfully fetched \(messages.count) messages")
+            #endif
             return messages
             
         case 401:
-            print("APIService: Unauthorized")
+            #if DEBUG
+            debugLog("Unauthorized")
+            #endif
             throw APIError.unauthorized
             
         case 500:
-            print("APIService: Server error")
+            #if DEBUG
+            debugLog("Server error")
+            #endif
             throw APIError.serverError("Internal server error")
             
         default:
-            print("APIService: Unexpected status code: \(httpResponse.statusCode)")
+            #if DEBUG
+            debugLog("Unexpected status code: \(httpResponse.statusCode)")
+            #endif
             throw APIError.serverError("Unexpected status code: \(httpResponse.statusCode)")
         }
     }
     
     /// Generate and update conversation title
     public func generateTitle(conversationId: String, content: String) async throws -> Conversation {
-        print("APIService: Generating title for conversation \(conversationId)")
+        #if DEBUG
+        debugLog("Generating title for conversation \(conversationId)")
+        #endif
         
         guard let session = await clerk.session else {
-            print("APIService: No active session found")
+            #if DEBUG
+            debugLog("No active session found")
+            #endif
             throw APIError.noActiveSession
         }
         
         guard let token = try await session.getToken() else {
-            print("APIService: Failed to get session token")
+            #if DEBUG
+            debugLog("Failed to get session token")
+            #endif
             throw APIError.noActiveSession
         }
         
@@ -434,15 +588,21 @@ public class APIService {
         let body: [String: String] = ["content": content]
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
         
-        print("APIService: Making request to \(url)")
+        #if DEBUG
+        debugLog("Making request to \(url)")
+        #endif
         let (data, response) = try await URLSession.shared.data(for: request)
         
         guard let httpResponse = response as? HTTPURLResponse else {
-            print("APIService: Invalid response type")
+            #if DEBUG
+            debugLog("Invalid response type")
+            #endif
             throw APIError.invalidResponse
         }
         
-        print("APIService: Response status code: \(httpResponse.statusCode)")
+        #if DEBUG
+        debugLog("Response status code: \(httpResponse.statusCode)")
+        #endif
         
         switch httpResponse.statusCode {
         case 200:
@@ -451,14 +611,18 @@ public class APIService {
                 let decoder = JSONDecoder()
                 let titleResponse = try decoder.decode(APIResponse<TitleResponse>.self, from: data)
                 guard let title = titleResponse.data?.title else {
-                    print("APIService: No title in response")
+                    #if DEBUG
+                    debugLog("No title in response")
+                    #endif
                     throw APIError.invalidResponse
                 }
                 
                 // Get the current conversation to preserve other fields
                 let currentConversation = try await getConversations().first { $0.id == conversationId }
                 guard let conversation = currentConversation else {
-                    print("APIService: Could not find conversation")
+                    #if DEBUG
+                    debugLog("Could not find conversation")
+                    #endif
                     throw APIError.serverError("Conversation not found")
                 }
                 
@@ -470,46 +634,66 @@ public class APIService {
                     lastModified: Int64(Date().timeIntervalSince1970 * 1000)
                 )
                 
-                print("APIService: Successfully generated title for conversation")
+                #if DEBUG
+                debugLog("Successfully generated title for conversation")
+                #endif
                 return updatedConversation
             } catch {
-                print("APIService: Failed to decode response: \(error)")
+                #if DEBUG
+                debugLog("Failed to decode response: \(error)")
+                #endif
                 throw APIError.decodingError(error)
             }
             
         case 400:
-            print("APIService: Bad request")
+            #if DEBUG
+            debugLog("Bad request")
+            #endif
             throw APIError.serverError("Bad request")
             
         case 401:
-            print("APIService: Unauthorized")
+            #if DEBUG
+            debugLog("Unauthorized")
+            #endif
             throw APIError.unauthorized
             
         case 404:
-            print("APIService: Conversation not found")
+            #if DEBUG
+            debugLog("Conversation not found")
+            #endif
             throw APIError.serverError("Conversation not found")
             
         case 500:
-            print("APIService: Server error")
+            #if DEBUG
+            debugLog("Server error")
+            #endif
             throw APIError.serverError("Internal server error")
             
         default:
-            print("APIService: Unexpected status code: \(httpResponse.statusCode)")
+            #if DEBUG
+            debugLog("Unexpected status code: \(httpResponse.statusCode)")
+            #endif
             throw APIError.serverError("Unexpected status code: \(httpResponse.statusCode)")
         }
     }
     
     /// Send a message and get the AI's response
     public func sendMessage(conversationId: String, content: String) async throws -> (message: Message, response: Message) {
-        print("APIService: Sending message to conversation \(conversationId)")
+        #if DEBUG
+        debugLog("Sending message to conversation \(conversationId)")
+        #endif
         
         guard let session = await clerk.session else {
-            print("APIService: No active session found")
+            #if DEBUG
+            debugLog("No active session found")
+            #endif
             throw APIError.noActiveSession
         }
         
         guard let token = try await session.getToken() else {
-            print("APIService: Failed to get session token")
+            #if DEBUG
+            debugLog("Failed to get session token")
+            #endif
             throw APIError.noActiveSession
         }
         
@@ -522,48 +706,68 @@ public class APIService {
         let body: [String: String] = ["content": content]
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
         
-        print("APIService: Making request to \(url)")
+        #if DEBUG
+        debugLog("Making request to \(url)")
+        #endif
         let (data, response) = try await URLSession.shared.data(for: request)
         
         guard let httpResponse = response as? HTTPURLResponse else {
-            print("APIService: Invalid response type")
+            #if DEBUG
+            debugLog("Invalid response type")
+            #endif
             throw APIError.invalidResponse
         }
         
-        print("APIService: Response status code: \(httpResponse.statusCode)")
+        #if DEBUG
+        debugLog("Response status code: \(httpResponse.statusCode)")
+        #endif
         
         switch httpResponse.statusCode {
         case 201:
             do {
                 let apiResponse = try JSONDecoder().decode(APIResponse<MessageResponse>.self, from: data)
                 guard let messageResponse = apiResponse.data else {
-                    print("APIService: No message data in response")
+                    #if DEBUG
+                    debugLog("No message data in response")
+                    #endif
                     throw APIError.invalidResponse
                 }
                 
                 let userMessage = convertToMessage(messageResponse.message)
                 let aiResponse = convertToMessage(messageResponse.response)
-                print("APIService: Successfully sent message and received response")
+                #if DEBUG
+                debugLog("Successfully sent message and received response")
+                #endif
                 return (userMessage, aiResponse)
             } catch {
-                print("APIService: Failed to decode response: \(error)")
+                #if DEBUG
+                debugLog("Failed to decode response: \(error)")
+                #endif
                 throw APIError.decodingError(error)
             }
             
         case 400:
-            print("APIService: Bad request")
+            #if DEBUG
+            debugLog("Bad request")
+            #endif
             throw APIError.serverError("Bad request")
             
         case 401:
-            print("APIService: Unauthorized")
+            #if DEBUG
+            debugLog("Unauthorized")
+            #endif
             throw APIError.unauthorized
             
         case 500:
-            print("APIService: Server error")
+            #if DEBUG
+            debugLog("Server error")
+            #endif
             throw APIError.serverError("Internal server error")
             
         default:
-            print("APIService: Unexpected status code: \(httpResponse.statusCode)")
+            #if DEBUG
+            debugLog("Unexpected status code: \(httpResponse.statusCode)")
+            #endif
             throw APIError.serverError("Unexpected status code: \(httpResponse.statusCode)")
         }
     }

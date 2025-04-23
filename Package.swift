@@ -22,7 +22,7 @@ let package = Package(
                 .product(name: "Clerk", package: "clerk-ios")
             ],
             path: "Sources/MintedUI",
-            sources: ["Models", "ViewModels", "Views", "Services"],
+            sources: ["Models", "ViewModels", "Views", "Services", "Utilities"],
             resources: [.process("Assets.xcassets")]),
         .testTarget(
             name: "MintedUITests",
