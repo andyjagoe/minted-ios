@@ -46,6 +46,7 @@ public struct ChatView: View {
                                         Spacer()
                                     }
                                     .padding(.horizontal)
+                                    .id("typing-indicator")
                                 }
                                 
                                 if let errorMessage = viewModel.lastErrorMessage {
@@ -67,6 +68,13 @@ public struct ChatView: View {
                         if let lastMessage = viewModel.currentMessages.last {
                             withAnimation(.easeOut(duration: 0.2)) {
                                 proxy.scrollTo(lastMessage.id, anchor: .bottom)
+                            }
+                        }
+                    }
+                    .onChange(of: viewModel.isWaitingForResponse) { isWaiting in
+                        if isWaiting {
+                            withAnimation(.easeOut(duration: 0.2)) {
+                                proxy.scrollTo("typing-indicator", anchor: .bottom)
                             }
                         }
                     }
