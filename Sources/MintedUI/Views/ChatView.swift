@@ -172,6 +172,7 @@ public struct ChatView: View {
                         
                         if viewModel.messageText.isEmpty {
                             Text("Design your vision")
+            
                                 .foregroundColor(.gray)
                                 .padding(.horizontal, 8)
                                 .padding(.vertical, 4)
@@ -206,37 +207,43 @@ public struct ChatView: View {
         #endif
         .toolbar {
             ToolbarItem(placement: .principal) {
-                HStack(spacing: 4) {
-                    Menu {
-                        ShareLink(item: "Minted Conversation") {
-                            Label("Share", systemImage: "square.and.arrow.up")
-                        }
-                        .disabled($viewModel.currentConversation.wrappedValue == nil)
-                        
-                        Button(action: {
-                            showRenameAlert = true
-                            newTitle = viewModel.currentConversation?.title ?? ""
-                        }) {
-                            Label("Rename", systemImage: "pencil")
-                        }
-                        .disabled(viewModel.currentConversation == nil)
-                        
-                        Button(role: .destructive, action: {
-                            showDeleteConfirmation = true
-                        }) {
-                            Label("Delete", systemImage: "trash")
-                        }
-                        .disabled(viewModel.currentConversation == nil)
-                    } label: {
-                        HStack(spacing: 4) {
-                            Text("Minted")
-                                .font(.headline)
-                                .foregroundColor(.gray)
-                            Image(systemName: "chevron.right")
-                                .font(.caption)
-                                .foregroundColor(.gray)
+                GeometryReader { geometry in
+                    HStack(spacing: 4) {
+                        Menu {
+                            ShareLink(item: "Minted Conversation") {
+                                Label("Share", systemImage: "square.and.arrow.up")
+                            }
+                            .disabled($viewModel.currentConversation.wrappedValue == nil)
+                            
+                            Button(action: {
+                                showRenameAlert = true
+                                newTitle = viewModel.currentConversation?.title ?? ""
+                            }) {
+                                Label("Rename", systemImage: "pencil")
+                            }
+                            .disabled(viewModel.currentConversation == nil)
+                            
+                            Button(role: .destructive, action: {
+                                showDeleteConfirmation = true
+                            }) {
+                                Label("Delete", systemImage: "trash")
+                            }
+                            .disabled(viewModel.currentConversation == nil)
+                        } label: {
+                            HStack(spacing: 4) {
+                                Text(viewModel.currentConversation?.title ?? "Minted")
+                                    .font(.headline)
+                                    .foregroundColor(.gray)
+                                    .lineLimit(1)
+                                    .truncationMode(.tail)
+                                    .frame(maxWidth: geometry.size.width - 100) // Leave space for buttons
+                                Image(systemName: "chevron.right")
+                                    .font(.caption)
+                                    .foregroundColor(.gray)
+                            }
                         }
                     }
+                    .frame(maxWidth: .infinity)
                 }
             }
             
