@@ -18,6 +18,14 @@ public struct ChatView: View {
     
     public var body: some View {
         ZStack {
+            #if os(iOS)
+            Color(.systemBackground)
+                .ignoresSafeArea()
+            #else
+            Color(NSColor.windowBackgroundColor)
+                .ignoresSafeArea()
+            #endif
+            
             VStack(spacing: 0) {
                 // Carousel
                 if viewModel.currentMessages.isEmpty && !viewModel.isLoadingMessages && !viewModel.isLoadingConversations {
@@ -84,6 +92,9 @@ public struct ChatView: View {
                         }
                         isInputFocused = true
                     }
+                }
+                .safeAreaInset(edge: .top) {
+                    Color.clear.frame(height: 0)
                 }
                 
                 // Suggestion bubbles
@@ -195,16 +206,12 @@ public struct ChatView: View {
                 .padding()
                 .background(.ultraThinMaterial)
             }
-            .safeAreaInset(edge: .top) {
-                Color.clear.frame(height: 0)
-            }
             
             // Menu overlay
             MenuView(isShowing: $isMenuShowing, viewModel: viewModel)
         }
         #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
-        #endif
         .toolbar {
             ToolbarItem(placement: .principal) {
                 GeometryReader { geometry in
@@ -236,7 +243,7 @@ public struct ChatView: View {
                                     .foregroundColor(.gray)
                                     .lineLimit(1)
                                     .truncationMode(.tail)
-                                    .frame(maxWidth: geometry.size.width - 100) // Leave space for buttons
+                                    .frame(maxWidth: geometry.size.width - 100)
                                 Image(systemName: "chevron.right")
                                     .font(.caption)
                                     .foregroundColor(.gray)
@@ -247,7 +254,6 @@ public struct ChatView: View {
                 }
             }
             
-            #if os(iOS)
             ToolbarItem(placement: .navigationBarLeading) {
                 Button(action: {
                     withAnimation {
@@ -262,14 +268,11 @@ public struct ChatView: View {
             
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button(action: {
-                    // Wrap async operations in a Task
                     Task {
                         do {
                             try await viewModel.createNewConversation()
                         } catch {
-                            // Handle potential errors during creation
-                            print("Error creating conversation from toolbar: \\(error)")
-                            // Optionally show an error message to the user
+                            print("Error creating conversation from toolbar: \(error)")
                         }
                     }
                 }) {
@@ -278,7 +281,11 @@ public struct ChatView: View {
                         .foregroundColor(.gray)
                 }
             }
-            #else
+        }
+        .toolbarBackground(.visible, for: .navigationBar)
+        .toolbarBackground(Color(.systemBackground), for: .navigationBar)
+        #else
+        .toolbar {
             ToolbarItem(placement: .automatic) {
                 Button(action: {
                     withAnimation {
@@ -293,14 +300,11 @@ public struct ChatView: View {
             
             ToolbarItem(placement: .automatic) {
                 Button(action: {
-                    // Wrap async operations in a Task
                     Task {
                         do {
                             try await viewModel.createNewConversation()
                         } catch {
-                            // Handle potential errors during creation
-                            print("Error creating conversation from toolbar (macOS): \\(error)")
-                            // Optionally show an error message to the user
+                            print("Error creating conversation from toolbar (macOS): \(error)")
                         }
                     }
                 }) {
@@ -309,10 +313,7 @@ public struct ChatView: View {
                         .foregroundColor(.gray)
                 }
             }
-            #endif
         }
-        #if os(iOS)
-        .toolbar(isMenuShowing ? .hidden : .visible, for: .navigationBar)
         #endif
         .confirmationDialog(
             "Delete Chat",

@@ -32,6 +32,11 @@ struct MintedApp: App {
                         .environment(clerk)
                 }
             }
+            #if os(iOS)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(.visible, for: .navigationBar)
+            .toolbarBackground(Color(.systemBackground), for: .navigationBar)
+            #endif
         }
     }
 }
