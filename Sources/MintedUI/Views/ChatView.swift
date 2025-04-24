@@ -243,7 +243,7 @@ public struct ChatView: View {
                                     .foregroundColor(.gray)
                                     .lineLimit(1)
                                     .truncationMode(.tail)
-                                    .frame(maxWidth: geometry.size.width - 100)
+                                    .frame(maxWidth: geometry.size.width - 60)
                                 Image(systemName: "chevron.right")
                                     .font(.caption)
                                     .foregroundColor(.gray)
